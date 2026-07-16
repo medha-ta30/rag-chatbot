@@ -19,3 +19,8 @@ LOG_DIR = "logs"
 DOCS_DIR = "docs"
 TESTS_DIR = "tests"
 LOG_FILE = os.path.join(LOG_DIR, "app.log")
+
+# Chunking Constants
+DEFAULT_CHUNK_SIZE = 1000
+DEFAULT_CHUNK_OVERLAP = 200
+
