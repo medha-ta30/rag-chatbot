@@ -3,6 +3,7 @@ import streamlit as st
 import config
 from services.pdf_loader import extract_text_from_pdf
 from services.chunker import chunk_document_pages
+from services.embedding_service import generate_embeddings
 
 # 1. Initialize directory structure
 def initialize_directories():
@@ -20,7 +21,7 @@ st.set_page_config(
 
 # 3. Main Page Header
 st.title("Week 9 RAG Chatbot 🤖")
-st.subheader("Current Phase: Phase 3 - Chunking")
+st.subheader("Current Phase: Phase 4 - Embedding Generation")
 
 # 4. Sidebar Configuration
 st.sidebar.title("Configuration")
@@ -91,30 +92,66 @@ if process_button:
         
         if all_extracted_pages:
             # Step 2: Custom Chunking
+            chunks = []
             try:
                 chunks = chunk_document_pages(all_extracted_pages)
-                
-                # Display processing summary
-                st.success(
-                    f"Successfully processed {successful_files_count} PDF(s) "
-                    f"with a total of {total_pages_processed} page(s), "
-                    f"generating {len(chunks)} chunk(s)."
-                )
-                
-                # Preview first 3 chunks
-                st.markdown("### Chunking Verification Preview")
-                preview_count = min(3, len(chunks))
-                
-                with st.expander(f"🔍 Preview Chunks (First {preview_count} chunks)"):
-                    for i in range(preview_count):
-                        chunk = chunks[i]
-                        st.markdown(f"**Chunk ID**: `{chunk['chunk_id']}`")
-                        st.write(f"- **Source File**: {chunk['filename']}")
-                        st.write(f"- **Page Number**: {chunk['page_number']}")
-                        st.write(f"- **Chunk Index**: {chunk['chunk_index']}")
-                        st.code(chunk['text'], language=None)
-                        st.markdown("---")
             except Exception as e:
                 st.error(f"Failed during chunking: {str(e)}")
+            
+            # Step 3: Generate Embeddings
+            if chunks:
+                embedded_chunks = []
+                status_text.text("Generating embeddings...")
+                try:
+                    embedded_chunks = generate_embeddings(chunks)
+                    status_text.empty()
+                except Exception as e:
+                    status_text.empty()
+                    st.error(f"Failed during embedding generation: {str(e)}")
+                
+                if embedded_chunks:
+                    # Check if any chunk failed
+                    if len(embedded_chunks) < len(chunks):
+                        skipped_count = len(chunks) - len(embedded_chunks)
+                        st.warning(f"Warning: {skipped_count} chunk(s) failed to generate embeddings and were skipped.")
+                        
+                    # Display processing summary
+                    st.success(
+                        f"Successfully processed {successful_files_count} PDF(s) "
+                        f"with a total of {total_pages_processed} page(s), "
+                        f"generating {len(chunks)} chunk(s) "
+                        f"and {len(embedded_chunks)} embedding(s)."
+                    )
+                    
+                    # Embedding Verification Dashboard
+                    first_emb = embedded_chunks[0]["embedding"]
+                    embedding_dim = len(first_emb)
+                    rounded_preview = [round(val, 4) for val in first_emb[:5]]
+                    
+                    st.markdown("### Embedding Verification Dashboard")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Total Embeddings", len(embedded_chunks))
+                        st.write(f"**Embedding Model:** `{config.EMBEDDING_MODEL}`")
+                    with col2:
+                        st.metric("Embedding Dimension", embedding_dim)
+                        st.write(f"**Vector Preview (first 5 values):** `{rounded_preview}...`")
+                        
+                    # Preview first 3 chunks with their embedding metadata
+                    st.markdown("### Chunking & Embedding Preview")
+                    preview_count = min(3, len(embedded_chunks))
+                    
+                    with st.expander(f"🔍 Preview Chunks & Vectors (First {preview_count})"):
+                        for i in range(preview_count):
+                            chunk = embedded_chunks[i]
+                            chunk_preview = [round(val, 4) for val in chunk["embedding"][:5]]
+                            st.markdown(f"**Chunk ID**: `{chunk['chunk_id']}`")
+                            st.write(f"- **Source File**: {chunk['filename']}")
+                            st.write(f"- **Page Number**: {chunk['page_number']}")
+                            st.write(f"- **Chunk Index**: {chunk['chunk_index']}")
+                            st.write(f"- **Embedding (first 5 dimensions)**: `{chunk_preview}...`")
+                            st.code(chunk['text'], language=None)
+                            st.markdown("---")
+
 
 

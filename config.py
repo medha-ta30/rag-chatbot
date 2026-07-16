@@ -24,3 +24,7 @@ LOG_FILE = os.path.join(LOG_DIR, "app.log")
 DEFAULT_CHUNK_SIZE = 1000
 DEFAULT_CHUNK_OVERLAP = 200
 
+# Embedding Constants
+EMBEDDING_MODEL = "text-embedding-004"
+
+
