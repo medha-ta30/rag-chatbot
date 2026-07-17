@@ -1,74 +1,47 @@
-import os
-from google import genai
+import time
 import config
+from google import genai
 
-def generate_embeddings(chunks: list[dict]) -> list[dict]:
-    """
-    Generates embedding vectors for a list of text chunks using Google's text-embedding-004 model.
-
-    Args:
-        chunks (list[dict]): A list of chunk dictionaries:
-            [{"chunk_id": "...", "filename": "...", "page_number": 1, "chunk_index": 0, "text": "..."}]
-
-    Returns:
-        list[dict]: A new list of chunk dictionaries with the 'embedding' vector field appended:
-            [{
-                "chunk_id": "...",
-                "filename": "...",
-                "page_number": 1,
-                "chunk_index": 0,
-                "text": "...",
-                "embedding": [0.184, -0.392, ...]
-            }]
-
-    Raises:
-        ValueError: If the GEMINI_API_KEY is not configured or the chunks list is empty.
-    """
-    # 1. Validation
+def generate_embeddings(chunks: list[dict], batch_size: int = 20, max_retries: int = 5) -> list[dict]:
     if not config.GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY is not configured in the environment variables.")
-    
     if not chunks:
         raise ValueError("The list of chunks provided is empty.")
 
-    # 2. Initialize Google GenAI client
     client = genai.Client(api_key=config.GEMINI_API_KEY)
     embedded_chunks = []
 
-    # 3. Process each chunk
+    # Filter out empty chunks up front, same as before
+    valid_chunks = []
     for chunk in chunks:
-        text = chunk.get("text", "").strip()
-        chunk_id = chunk.get("chunk_id", "unknown")
-        
-        # Skip empty chunks
-        if not text:
-            print(f"Warning: Skipped empty chunk '{chunk_id}'.")
-            continue
+        if chunk.get("text", "").strip():
+            valid_chunks.append(chunk)
+        else:
+            print(f"Warning: Skipped empty chunk '{chunk.get('chunk_id', 'unknown')}'.")
 
-        try:
-            # Call Google GenAI Embeddings API
-            response = client.models.embed_content(
-                model=config.EMBEDDING_MODEL,
-                contents=text
-            )
-            
-            # Extract embedding values (usually a list of floats)
-            embedding_vector = response.embedding.values
-            
-            # Append the 'embedding' key at the end of the new dictionary
-            new_chunk = {
-                "chunk_id": chunk["chunk_id"],
-                "filename": chunk["filename"],
-                "page_number": chunk["page_number"],
-                "chunk_index": chunk["chunk_index"],
-                "text": chunk["text"],
-                "embedding": embedding_vector
-            }
-            
-            embedded_chunks.append(new_chunk)
-            
-        except Exception as e:
-            # Print/log the warning and continue processing other chunks
-            print(f"Warning: Failed to generate embedding for chunk '{chunk_id}': {str(e)}")
+    for i in range(0, len(valid_chunks), batch_size):
+        batch = valid_chunks[i:i + batch_size]
+        texts = [c["text"] for c in batch]
+
+        attempt = 0
+        while attempt <= max_retries:
+            try:
+                response = client.models.embed_content(
+                    model=config.EMBEDDING_MODEL,
+                    contents=texts,   # list in, list of embeddings out — one request for the whole batch
+                )
+                for chunk, emb in zip(batch, response.embeddings):
+                    embedded_chunks.append({**chunk, "embedding": emb.values})
+                break  # batch succeeded, move to next batch
+
+            except Exception as e:
+                if "429" in str(e) and attempt < max_retries:
+                    wait_seconds = 2 ** attempt * 5   # 5s, 10s, 20s, 40s, 80s
+                    print(f"Rate limited on batch {i // batch_size}; retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                    attempt += 1
+                else:
+                    print(f"Failed to embed batch starting at chunk {i}: {e}")
+                    break  # give up on this batch after exhausting retries, don't loop forever
 
     return embedded_chunks

@@ -25,6 +25,16 @@ DEFAULT_CHUNK_SIZE = 1000
 DEFAULT_CHUNK_OVERLAP = 200
 
 # Embedding Constants
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = "gemini-embedding-001"
 
+# Retrieval Constants
+DEFAULT_TOP_K = 3
 
+# LLM Models Configuration
+MODEL_GEMINI = "Gemini Flash"
+MODEL_QWEN = "Qwen 2.5"
+
+LLM_MODELS = [MODEL_GEMINI, MODEL_QWEN]
+
+GEMINI_LLM_MODEL = "gemini-flash-latest"
+QWEN_LLM_MODEL = "Qwen/Qwen2.5-7B-Instruct"
