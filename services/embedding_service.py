@@ -1,6 +1,8 @@
 import time
 import config
 from google import genai
+from services.logger import logger
+
 
 def generate_embeddings(chunks: list[dict], batch_size: int = 20, max_retries: int = 5) -> list[dict]:
     if not config.GEMINI_API_KEY:
@@ -11,13 +13,16 @@ def generate_embeddings(chunks: list[dict], batch_size: int = 20, max_retries: i
     client = genai.Client(api_key=config.GEMINI_API_KEY)
     embedded_chunks = []
 
-    # Filter out empty chunks up front, same as before
     valid_chunks = []
     for chunk in chunks:
         if chunk.get("text", "").strip():
             valid_chunks.append(chunk)
         else:
-            print(f"Warning: Skipped empty chunk '{chunk.get('chunk_id', 'unknown')}'.")
+            logger.warning("Skipped empty chunk chunk_id=%s", chunk.get("chunk_id", "unknown"))
+
+    skipped_count = len(chunks) - len(valid_chunks)
+    if skipped_count > 0:
+        logger.info("Embedding Generation skipped_chunks=%d", skipped_count)
 
     for i in range(0, len(valid_chunks), batch_size):
         batch = valid_chunks[i:i + batch_size]
@@ -28,20 +33,33 @@ def generate_embeddings(chunks: list[dict], batch_size: int = 20, max_retries: i
             try:
                 response = client.models.embed_content(
                     model=config.EMBEDDING_MODEL,
-                    contents=texts,   # list in, list of embeddings out — one request for the whole batch
+                    contents=texts,
                 )
                 for chunk, emb in zip(batch, response.embeddings):
                     embedded_chunks.append({**chunk, "embedding": emb.values})
-                break  # batch succeeded, move to next batch
+                break
 
             except Exception as e:
                 if "429" in str(e) and attempt < max_retries:
-                    wait_seconds = 2 ** attempt * 5   # 5s, 10s, 20s, 40s, 80s
-                    print(f"Rate limited on batch {i // batch_size}; retrying in {wait_seconds}s...")
+                    wait_seconds = 2 ** attempt * 5
+                    logger.warning(
+                        "Rate limited on batch batch=%d retrying_in=%ds",
+                        i // batch_size, wait_seconds,
+                    )
                     time.sleep(wait_seconds)
                     attempt += 1
                 else:
-                    print(f"Failed to embed batch starting at chunk {i}: {e}")
-                    break  # give up on this batch after exhausting retries, don't loop forever
+                    logger.error(
+                        "Failed to embed batch batch=%d error=%s",
+                        i // batch_size, e, exc_info=True,
+                    )
+                    break
+
+    if embedded_chunks:
+        vector_dim = len(embedded_chunks[0]["embedding"]) if embedded_chunks else 0
+        logger.info(
+            "Embedding Generation embedding_model=%s vectors_generated=%d vector_dimension=%d",
+            config.EMBEDDING_MODEL, len(embedded_chunks), vector_dim,
+        )
 
     return embedded_chunks

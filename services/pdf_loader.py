@@ -1,5 +1,7 @@
 import os
 from pypdf import PdfReader
+from services.logger import logger
+
 
 def extract_text_from_pdf(file_path: str) -> list[dict]:
     """
@@ -26,6 +28,7 @@ def extract_text_from_pdf(file_path: str) -> list[dict]:
     try:
         reader = PdfReader(file_path)
     except Exception as e:
+        logger.error("Failed to read PDF file filename=%s error=%s", filename, e, exc_info=True)
         raise Exception(f"Failed to read PDF file '{filename}': {str(e)}")
 
     total_pages = len(reader.pages)
@@ -37,9 +40,9 @@ def extract_text_from_pdf(file_path: str) -> list[dict]:
         try:
             text = page.extract_text()
         except Exception as e:
+            logger.warning("Failed to extract text from page filename=%s page=%d error=%s", filename, page_number, e)
             text = ""
         
-        # Ensure we default to an empty string if pypdf returns None or empty
         if text is None:
             text = ""
             

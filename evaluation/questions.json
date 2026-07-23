@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "category": "in_domain",
+    "question": "What is the policy for annual leave?",
+    "expected_answer": "Employees are entitled to 20 days of paid annual leave per calendar year.",
+    "expected_source": "Employee_Handbook.pdf"
+  },
+  {
+    "id": 2,
+    "category": "in_domain",
+    "question": "How many casual leaves are allowed per year?",
+    "expected_answer": "Employees are granted 6 casual leaves annually.",
+    "expected_source": "Employee_Handbook.pdf"
+  },
+  {
+    "id": 3,
+    "category": "in_domain",
+    "question": "What is the password renewal policy?",
+    "expected_answer": "Passwords must be updated every 90 days following security guidelines.",
+    "expected_source": "IT_Policy.pdf"
+  },
+  {
+    "id": 4,
+    "category": "in_domain",
+    "question": "Does remote work require manager approval?",
+    "expected_answer": "Yes, remote work arrangements require prior written manager approval.",
+    "expected_source": "Remote_Work_Policy.pdf"
+  },
+  {
+    "id": 5,
+    "category": "in_domain",
+    "question": "What is the procedure for sick leave exceeding 3 days?",
+    "expected_answer": "A doctor certificate is required for sick leave exceeding 3 consecutive days.",
+    "expected_source": "Employee_Handbook.pdf"
+  },
+  {
+    "id": 6,
+    "category": "in_domain",
+    "question": "What are the standard office working hours?",
+    "expected_answer": "Standard working hours are 9:00 AM to 5:00 PM, Monday through Friday.",
+    "expected_source": "Employee_Handbook.pdf"
+  },
+  {
+    "id": 7,
+    "category": "in_domain",
+    "question": "What is the policy on company laptop usage?",
+    "expected_answer": "Company laptops are for official business use and must remain encrypted.",
+    "expected_source": "IT_Policy.pdf"
+  },
+  {
+    "id": 8,
+    "category": "in_domain",
+    "question": "How is travel expense reimbursement submitted?",
+    "expected_answer": "Travel expense receipts must be submitted via the finance portal within 14 days.",
+    "expected_source": "Finance_Policy.pdf"
+  },
+  {
+    "id": 9,
+    "category": "out_of_domain",
+    "question": "Who won the FIFA World Cup in 2022?",
+    "expected_answer": "I couldn't find enough relevant information in the uploaded document(s) to answer that question.",
+    "expected_source": null
+  },
+  {
+    "id": 10,
+    "category": "out_of_domain",
+    "question": "What is the recipe for baking a chocolate cake?",
+    "expected_answer": "I couldn't find enough relevant information in the uploaded document(s) to answer that question.",
+    "expected_source": null
+  },
+  {
+    "id": 11,
+    "category": "out_of_domain",
+    "question": "What is the distance from Earth to Mars?",
+    "expected_answer": "I couldn't find enough relevant information in the uploaded document(s) to answer that question.",
+    "expected_source": null
+  },
+  {
+    "id": 12,
+    "category": "out_of_domain",
+    "question": "Who wrote the play Hamlet?",
+    "expected_answer": "I couldn't find enough relevant information in the uploaded document(s) to answer that question.",
+    "expected_source": null
+  }
+]

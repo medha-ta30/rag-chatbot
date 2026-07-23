@@ -4,6 +4,8 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, PayloadSchemaType
 import config
 import streamlit as st
+from services.logger import logger
+
 
 @st.cache_resource
 def get_qdrant_client() -> QdrantClient:
@@ -24,7 +26,8 @@ def get_qdrant_client() -> QdrantClient:
 
 def create_collection_if_not_exists(client: QdrantClient, collection_name: str, vector_size: int) -> None:
     """
-    Checks if a collection exists in Qdrant; if it does not, creates it with Cosine distance.
+    Checks if a collection exists in Qdrant; if it does not, creates it with Cosine distance
+    and a payload index on the filename field.
 
     Args:
         client (QdrantClient): An active QdrantClient instance.
@@ -46,6 +49,17 @@ def create_collection_if_not_exists(client: QdrantClient, collection_name: str, 
                 distance=Distance.COSINE
             )
         )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="filename",
+            field_schema=PayloadSchemaType.KEYWORD,
+        )
+        logger.info(
+            "Qdrant collection_created=%s vector_dimension=%d",
+            collection_name, vector_size,
+        )
+    else:
+        logger.info("Qdrant collection_exists=%s", collection_name)
 
 def get_available_filenames(client: QdrantClient, collection_name: str) -> list[str]:
     """
@@ -69,23 +83,6 @@ def get_available_filenames(client: QdrantClient, collection_name: str) -> list[
     )
     return sorted({r.payload["filename"] for r in records if r.payload.get("filename")})
 
-def create_collection_if_not_exists(client: QdrantClient, collection_name: str, vector_size: int) -> None:
-    exists = client.collection_exists(collection_name=collection_name)
-    if not exists:
-        client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=vector_size,
-                distance=Distance.COSINE
-            )
-        )
-        # Required for filtering by filename in retrieve_relevant_chunks
-        client.create_payload_index(
-            collection_name=collection_name,
-            field_name="filename",
-            field_schema=PayloadSchemaType.KEYWORD,
-        )
-
 def upsert_embeddings(client: QdrantClient, collection_name: str, embedded_chunks: list[dict]) -> None:
     """
     Upserts a list of embedded chunks into the specified Qdrant collection.
@@ -107,11 +104,8 @@ def upsert_embeddings(client: QdrantClient, collection_name: str, embedded_chunk
     
     for chunk in embedded_chunks:
         chunk_id = chunk["chunk_id"]
-        
-        # Generate a deterministic UUID based on the chunk_id string
         point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, chunk_id))
         
-        # Build payload containing metadata fields
         payload = {
             "filename": chunk["filename"],
             "page_number": chunk["page_number"],
@@ -139,10 +133,14 @@ def upsert_embeddings(client: QdrantClient, collection_name: str, embedded_chunk
             timeout=60
         )
 
-        # Optional status check (depends on qdrant-client version)
         try:
             if hasattr(result, "status") and str(result.status).lower() != "completed":
                 raise RuntimeError(f"Batch {i // BATCH_SIZE + 1} upload failed: {result.status}")
-            print(f"Uploaded batch {i // BATCH_SIZE + 1}: {len(batch)} vectors")
+            logger.info("Qdrant batch_uploaded=%d vectors=%d", i // BATCH_SIZE + 1, len(batch))
         except Exception:
             pass
+
+    logger.info(
+        "Qdrant collection_name=%s vectors_stored=%d",
+        collection_name, len(points),
+    )

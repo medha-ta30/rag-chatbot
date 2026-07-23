@@ -1,5 +1,7 @@
 import os
 import config
+from services.logger import logger
+
 
 def chunk_document_pages(
     pages: list[dict], 
@@ -25,7 +27,6 @@ def chunk_document_pages(
                 "text": "..."
             }]
     """
-    # Validate parameters
     if chunk_size <= 0:
         raise ValueError("chunk_size must be greater than 0.")
     if chunk_overlap < 0 or chunk_overlap >= chunk_size:
@@ -38,7 +39,6 @@ def chunk_document_pages(
         page_number = page.get("page_number", 0)
         text = page.get("text", "").strip()
 
-        # Skip pages with no extractable text
         if not text:
             continue
 
@@ -54,14 +54,12 @@ def chunk_document_pages(
             current_words = []
             curr_char_len = 0
 
-            # Step 1: Pack words into the current chunk
             i = start_idx
             while i < words_count:
                 word = words[i]
                 space_padding = 1 if len(current_words) > 0 else 0
                 next_len = curr_char_len + space_padding + len(word)
 
-                # Stop if adding the next word exceeds chunk_size
                 if next_len > chunk_size and len(current_words) > 0:
                     break
 
@@ -82,11 +80,9 @@ def chunk_document_pages(
 
             chunk_index += 1
 
-            # If we reached the end of words list, we are done with this page
             if i >= words_count:
                 break
 
-            # Step 2: Determine next start_idx incorporating character overlap
             backtrack_chars = 0
             backtrack_words_count = 0
 
@@ -97,7 +93,6 @@ def chunk_document_pages(
                 if backtrack_chars >= chunk_overlap:
                     break
 
-            # Safety fallback: always progress by at least one word to prevent infinite loops
             if backtrack_words_count >= len(current_words):
                 backtrack_words_count = len(current_words) - 1
 

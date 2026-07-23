@@ -18,7 +18,7 @@ UPLOAD_DIR = "uploads"
 LOG_DIR = "logs"
 DOCS_DIR = "docs"
 TESTS_DIR = "tests"
-LOG_FILE = os.path.join(LOG_DIR, "app.log")
+LOG_FILE = os.path.join(LOG_DIR, "debugging_log.md")
 
 # Chunking Constants
 DEFAULT_CHUNK_SIZE = 1000

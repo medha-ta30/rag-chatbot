@@ -1,6 +1,9 @@
+import time
 import config
 from google import genai
 from huggingface_hub import InferenceClient
+from services.logger import logger
+
 
 def generate_response(prompt: str, model_name: str) -> str:
     """
@@ -35,16 +38,18 @@ def _generate_gemini_response(prompt: str) -> str:
 
     try:
         client = genai.Client(api_key=config.GEMINI_API_KEY)
-        print("Gemini model from config:", config.GEMINI_LLM_MODEL)
-        print("Config file:", config.__file__)
+        llm_start = time.time()
         response = client.models.generate_content(
             model=config.GEMINI_LLM_MODEL,
             contents=prompt
         )
+        generation_time = round(time.time() - llm_start, 2)
+        logger.info("LLM Generation model=%s generation_time=%.2fs", config.GEMINI_LLM_MODEL, generation_time)
         if not response.text:
             return "Error: Gemini returned an empty response."
         return response.text
     except Exception as e:
+        logger.error("LLM Generation model=%s error=%s", config.GEMINI_LLM_MODEL, e, exc_info=True)
         return f"Gemini API Error: {str(e)}"
 
 def _generate_qwen_response(prompt: str) -> str:
@@ -57,6 +62,7 @@ def _generate_qwen_response(prompt: str) -> str:
     try:
         client = InferenceClient(api_key=config.HF_API_KEY)
 
+        llm_start = time.time()
         response = client.chat.completions.create(
             model=config.QWEN_LLM_MODEL,
             messages=[
@@ -67,10 +73,10 @@ def _generate_qwen_response(prompt: str) -> str:
             ],
             max_tokens=500,
         )
+        generation_time = round(time.time() - llm_start, 2)
+        logger.info("LLM Generation model=%s generation_time=%.2fs", config.QWEN_LLM_MODEL, generation_time)
 
         return response.choices[0].message.content
-        if not response:
-            return "Error: QWEN returned an empty response."
-        return response
     except Exception as e:
+        logger.error("LLM Generation model=%s error=%s", config.QWEN_LLM_MODEL, e, exc_info=True)
         return f"QWEN API Error: {str(e)}"
